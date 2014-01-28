@@ -8,7 +8,7 @@ ethereum.py provides basic classes and structures for contract testing.
 This is not a substitute for the testnet, but should help increase the speed
 of prototyping contracts.
 
-To use, `import * from ethereum`
+To use, `from ethereum import *`
 
 The following low level objects will become available:
 EBN - an object that acts as either an int or a byte array depending on context.
@@ -17,14 +17,19 @@ TODO: EBN will be a representation of RLP in Ethereum. Arithmetic operations
 cannot be done if there is a sublist involved. EG: [1,1] + 1 = ?. Unless meaning
 can be found in that action it won't be implemented.
 
-Does not yet support sublists.
+EBN does not yet support sublists.
 
 '''
 
 
+# EARLY IMPORTS
+
+
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
+
 
 # LOW LEVEL OBJECTS
-
 
 
 class EBN:
@@ -119,6 +124,9 @@ class Transaction:
 		self.fee = fee
 		self.data = data
 		self.datan = len(data)
+		
+	def __str__(self):
+		return '%s,%s,%s,%s' % (self.receiver, self.value, self.fee, self.data)
 
 class Block:
 	def __init__(self, number, difficulty, parenthash, basefee, timestamp):
@@ -194,11 +202,15 @@ class Contract:
 		self.address = name
 		
 	def stop(self):
-		raise Exception("Contract stopped")
+		print '# Contract Stopped'
+		raise Exception("# Contract Stopped")
 		
 	def run(self, tx, latestBlock):
 		'''This should be overwritten when the class is inherited'''
 		raise Exception("Contract not initialized correctly.")
+		
+	def printState(self):
+		pp.pprint(self.storage._storage)
 
 
 
