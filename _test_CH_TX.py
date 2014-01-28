@@ -1,18 +1,11 @@
-#!/usr/bin/python
-
-''' Test CHAINHEADERS '''
-
-from chainheaders import *
-	
-c = CHAINHEADERS("CHAINHEADERS")
-b = Block(1,2**32,0x0,0,0)
-transactions = [
+from ethereum import Transaction, EBN
+transactions_chainheaders = [
 	Transaction('CHAINHEADERS',10**14,10**8,[EBN("010000006fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000982051fd1e4ba744bbbe680e1fee14677ba1a3c3540bf7b1cdb606e857233e0e61bc6649ffff001d01e36299")],'alice'),
 	Transaction('CHAINHEADERS',10**14,10**8,[EBN("010000004860eb18bf1b1620e37e9490fc8a427514416fd75159ab86688e9a8300000000d5fdcc541e25de1c7a5addedf24858b8bb665c9f36ef744ee42c316022c90f9bb0bc6649ffff001d08d2bd61")],'alice'),
 	# 3
 	Transaction('CHAINHEADERS',10**14,10**8,[EBN("01000000bddd99ccfda39da1b108ce1a5d70038d0a967bacb68b6b63065f626a0000000044f672226090d85db9a9f2fbfe5f0f9609b387af7be5b7fbb7a1767c831c9e995dbe6649ffff001d05e0ed6d")],'alice'),
 	# 5 - should reject
-	Transaction('CHAINHEADERS',10**14,10**8,[EBN("0100000085144a84488ea88d221c8bd6c059da090e88f8a2c99690ee55dbba4e00000000e11c48fecdd9e72510ca84f023370c9a38bf91ac5cae88019bee94d24528526344c36649ffff001d1d03e477")],'alice'),
+	#Transaction('CHAINHEADERS',10**14,10**8,[EBN("0100000085144a84488ea88d221c8bd6c059da090e88f8a2c99690ee55dbba4e00000000e11c48fecdd9e72510ca84f023370c9a38bf91ac5cae88019bee94d24528526344c36649ffff001d1d03e477")],'alice'),
 	# 4
 	Transaction('CHAINHEADERS',10**14,10**8,[EBN("010000004944469562ae1c2c74d9a535e00b6f3e40ffbad4f2fda3895501b582000000007a06ea98cd40ba2e3288262b28638cec5337c1456aaf5eedc8e9e5a20f062bdf8cc16649ffff001d2bfee0a9")],'alice'),
 	# 5
@@ -11726,11 +11719,3 @@ transactions = [
 	Transaction('CHAINHEADERS',10**14,10**8,[EBN("010000005b017958353dadaccfefbf63852be1abdeff3f5951b567700158c624000000002b43ed13fe8d0ba6e04498b215ecc2846ef2a05ea675bd47a0bd250f2f19fb3ac554ed49ffff001d366d213c")],'alice'),
 	Transaction('CHAINHEADERS',10**14,10**8,[EBN("01000000b60db7406575ca7df16fb215616fa84ee2bf4b34ce739721f0ff810600000000b170adad0073318b0f4d69fd6c33f6c7a57977aee689a4e9f59e13d8105cf7123559ed49ffff001d218d742b")],'alice'),
 	]
-
-for tx in transactions:
-	print 'TRANSACTION:',tx
-	try:
-		c.run(tx,b)
-	except:
-		pass
-c.printState()

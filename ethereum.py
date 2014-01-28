@@ -98,6 +98,10 @@ class EBN:
 		return "\""+self.hex()+"\""
 	def concat(self, other):
 		return self.this + other.this
+	def raw(self):
+		return self.this
+	def str(self):
+		return self.this
 	
 	
 # HELPER FUNCTIONS
@@ -136,6 +140,7 @@ class Block:
 		self.basefee = basefee
 		self.timestamp = timestamp
 		self.eth = None
+		self.transactions = []
 		
 	def setNetwork(self, eth):
 		self.eth = eth
@@ -147,6 +152,11 @@ class Block:
 	def account_balance(self, a):
 		return self.eth.account_balance(a)
 		
+	def addTx(self, tx):
+		if not tx.isValid() or tx in self.transactions:
+			return False
+		self.transactions.append(tx)
+		
 class Ethereum:
 	def __init__(self):
 		self.contracts = {}
@@ -155,8 +165,10 @@ class Ethereum:
 		self.latestBlock = None
 		
 	def processTx(self, tx):
+		self.addAccount(tx.sender)
 		if self.accounts[tx.sender] < (tx.value + tx.fee):
-			raise Exception("Insufficient funds in acct %s" % tx.sender)
+			print "WARNING: -'ve balance %s" % tx.sender
+		self.accounts[tx.sender] -= (tx.value + tx.fee)
 		if tx.receiver not in self.accounts:
 			self.accounts[tx.receiver] = 0.0
 		self.accounts[tx.receiver] += tx.value
@@ -168,11 +180,16 @@ class Ethereum:
 		self.accounts[contract.name] = 0.0
 		
 	def addBlock(self, block):
-		'''Presume block is correct, add to chain'''
+		'''Presume block is correct, add to end of chain'''
 		self.blocks.append(block)
-		self.latestBlock = blocks[-1]
+		self.latestBlock = self.blocks[-1]
 		for tx in self.latestBlock.transactions:
 			self.processTx(tx)
+		self.latestBlock.setNetwork(self)
+	
+	def addAccount(self, sender):
+		if sender not in self.accounts:
+			self.accounts[sender] = 0.0
 	
 	def contract_storage(self, D):
 		# D : name of contract (hash)
@@ -188,7 +205,6 @@ class ContractStorage:
 		#	key = int(key)
 		if key in self._storage:
 			return self._storage[key]
-		'bloop'
 		return 0
 	def __setitem__(self, key, val):
 		#if type(key) is not int:
@@ -201,9 +217,9 @@ class Contract:
 		self.storage = ContractStorage()
 		self.address = name
 		
-	def stop(self):
-		print '# Contract Stopped'
-		raise Exception("# Contract Stopped")
+	def stop(self, message=''):
+		print '# Contract Stopped -', message
+		raise Exception("# Contract Stopped - %s" % message)
 		
 	def run(self, tx, latestBlock):
 		'''This should be overwritten when the class is inherited'''
