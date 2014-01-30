@@ -85,7 +85,7 @@ class EBN:
 	def __pow__(self, other):
 		return int(self) ** int(other)
 	def __xor__(self, other):
-		return xor_strings(self.this, other.this)
+		return EBN(xor_strings(self.this, other.this), False)
 		
 	def __str__(self):
 		return self.this

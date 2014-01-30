@@ -37,4 +37,4 @@ class SPV(Contract):
 			self.stop("incorrect merkle root provided")
 			
 		# confirmed tx is in merkle root and merkle root in block
-		contract.storage[EBN(txhash ^ blockhash, False)] = 1
+		contract.storage[txhash ^ blockhash] = 1
