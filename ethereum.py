@@ -124,7 +124,7 @@ def testTransactions(ETH, lTx):
 	'''
 	test_records = []
 	for succeed, tx in lTx:
-		print 'TRANSACTION:',tx
+		print colored('TRANSACTION:','blue'), tx
 		noex = True
 		try:
 			ETH.processTx(tx)
@@ -247,7 +247,7 @@ class Contract:
 		self.address = name
 		
 	def stop(self, message=''):
-		print '# Contract Stopped -', message
+		print colored('# Contract Stopped - %s' % message,'red')
 		raise Exception("# Contract Stopped - %s" % message)
 		
 	def run(self, tx, latestBlock):

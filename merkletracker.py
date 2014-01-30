@@ -29,11 +29,10 @@ class MERKLETRACKER(Contract):
 			if blockdetails == 0:
 				self.stop("Blockhash doesn't exist in CHAINHEADERS")
 			blockheader = blockdetails[0]
-			if merkleroot == getmerkleroot(blockheader):
-				# success!
-				contract.storage[merkleroot] = 1
-			else:
+			if merkleroot != getmerkleroot(blockheader):
+				# fail
 				self.stop("merkleroot not in blockheader")
+			contract.storage[merkleroot] = 1
 
 		elif tx.data[0] == 1:
 			# fill in merkle branch
