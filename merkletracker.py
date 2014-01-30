@@ -25,12 +25,15 @@ class MERKLETRACKER(Contract):
 			# add a merkle root
 			merkleroot = tx.data[1]
 			blockhash = tx.data[2]
-			blockheader = block.contract_storage('CHAINHEADERS')[blockhash][0]
-			print merkleroot.hex(), getmerkleroot(blockheader).hex()
+			blockdetails = block.contract_storage('CHAINHEADERS')[blockhash]
+			if blockdetails == 0:
+				self.stop("Blockhash doesn't exist in CHAINHEADERS")
+			blockheader = blockdetails[0]
 			if merkleroot == getmerkleroot(blockheader):
 				# success!
 				contract.storage[merkleroot] = 1
-				print contract.storage._storage
+			else:
+				self.stop("merkleroot not in blockheader")
 
 		elif tx.data[0] == 1:
 			# fill in merkle branch
@@ -41,7 +44,6 @@ class MERKLETRACKER(Contract):
 			while True: 
 				counter += 1
 				hash3 = sha256(sha256(hash1.concat(hash2)))
-				print hash3.hex()
 				if tx.datan > counter:
 					lr = tx.data[counter][0]
 					hash4 = tx.data[counter][1:33]
@@ -83,5 +85,4 @@ class MERKLETRACKER(Contract):
 				else:
 					hash1 = hash4
 					hash2 = hash3
-			
 			# should be done, I think

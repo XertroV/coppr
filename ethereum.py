@@ -28,6 +28,9 @@ EBN does not yet support sublists.
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
+import traceback
+from termcolor import colored
+
 
 # LOW LEVEL OBJECTS
 
@@ -114,6 +117,32 @@ def sha256(message):
 
 
 
+def testTransactions(ETH, lTx):
+	''' takes a list of tuples: (bool, Transaction)
+	First argument is if the test should fail or succeed (fail means running into an exception)
+	Second argument is the Transaction() to load
+	'''
+	test_records = []
+	for succeed, tx in lTx:
+		print 'TRANSACTION:',tx
+		noex = True
+		try:
+			ETH.processTx(tx)
+		except Exception as err:
+			traceback.print_exc()
+			noex = False
+		test_records += [(succeed, noex)]
+	return test_records
+	
+def testResults(lRes):
+	''' print output of test results '''
+	count = 1
+	for test in lRes:
+		if test[0] == test[1]:
+			print colored('Test %d passed' % count, 'green')
+		else:
+			print colored('Test %d failed!' % count, 'red')
+		count += 1
 
 
 # HIGH LEVEL OBJECTS

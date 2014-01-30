@@ -6,8 +6,6 @@ from chainheaders import *
 from merkletracker import *
 from ethereum import *
 	
-import sys, traceback
-	
 c_ch = CHAINHEADERS("CHAINHEADERS")
 c_mt = MERKLETRACKER("MERKLETRACKER")
 b = Block(1,2**32,0x0,0,0)
@@ -20,12 +18,10 @@ ETH.addContract(c_ch)
 ETH.addContract(c_mt)
 ETH.accounts['alice'] = 10**20
 	
-for tx in transactions_chainheaders + transactions_merkletracker:
-	print 'TRANSACTION:',tx
-	try:
-		ETH.processTx(tx)
-	except Exception as err:
-		traceback.print_exc()
-	
+testTransactions(ETH, transactions_chainheaders)
+mt_results = testTransactions(ETH, transactions_merkletracker)
+
+testResults(mt_results)
+
 #ETH.contracts['CHAINHEADERS'].printState()
-ETH.contracts['MERKLETRACKER'].printState()
+#ETH.contracts['MERKLETRACKER'].printState()
