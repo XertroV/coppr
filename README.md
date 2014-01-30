@@ -2,7 +2,7 @@
 
 ## COntract PreProcessor and testeR
 
-Coppr aims to provide a simple way to test contracts for \*Ethereum\*
+Coppr aims to provide a simple way to test contracts for *Ethereum*
 locally and without a testnet. It is not a substitute for the testnet,
 however. Coppr aims to ignore the details you don't need, and only
 provide what is needed for the contract logic to be tested.
@@ -24,16 +24,20 @@ both stored in the EBN data structure (ethereum byte number). Arithmetic
 operations treat the data as a number, and slices treat the data as a
 list or array.
 
-### While coppr is in development please see chainheaders.py and extrapolate what do do from that.
+***While coppr is in development please see chainheaders.py / test-chainheaders.py
+and merkletracker.py / test-merkletracker.py and extrapolate what do do from that.***
+
+The dream is:
+
+`coppr contract.coppr tests.tests` to test and give some nice output and 
+`coppr contract.coppr` to 'compile' to the HLL / CHLL.
 
 ## Substitutions
 
 There are a few changes needed to be made between the Ethereum HLL and
 python, which are detailed below:
 
--   Raising to the power: use `**` instead of `^`
-
--   Concatenation: ebn1.concat(enb2) returns the concatenation
-    equivelant to ebn1+ebn2
+* Raising to the power: use `**` instead of `^`
+* Concatenation: ebn1.concat(enb2) returns the concatenation equivelant to ebn1+ebn2
 
 
