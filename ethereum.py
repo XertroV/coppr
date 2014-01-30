@@ -84,6 +84,8 @@ class EBN:
 		return int(self) % int(other)
 	def __pow__(self, other):
 		return int(self) ** int(other)
+	def __xor__(self, other):
+		return xor_strings(self.this, other.this)
 		
 	def __str__(self):
 		return self.this
@@ -115,7 +117,10 @@ def sha256(message):
 	# require EBN input at this stage
 	return EBN(hashlib.sha256(str(message)).digest(), fromHex=False)
 
-
+	
+def xor_strings(xs, ys):
+    return "".join(chr(ord(x) ^ ord(y)) for x, y in zip(xs, ys))
+	
 
 def testTransactions(ETH, lTx):
 	''' takes a list of tuples: (bool, Transaction)
@@ -129,6 +134,10 @@ def testTransactions(ETH, lTx):
 		try:
 			ETH.processTx(tx)
 		except Exception as err:
+			if succeed:
+				print colored('BAD       ','grey','on_red')
+			else:
+				print colored('GOOD      ','grey','on_green')
 			traceback.print_exc()
 			noex = False
 		test_records += [(succeed, noex)]
@@ -137,12 +146,17 @@ def testTransactions(ETH, lTx):
 def testResults(lRes):
 	''' print output of test results '''
 	count = 1
+	win = 0
+	lose = 0
 	for test in lRes:
 		if test[0] == test[1]:
 			print colored('Test %d passed' % count, 'green')
+			win += 1
 		else:
 			print colored('Test %d failed!' % count, 'red')
+			lose += 1
 		count += 1
+	print "Summary - Passed: %d, Failed: %d" % (win, lose)
 
 
 # HIGH LEVEL OBJECTS

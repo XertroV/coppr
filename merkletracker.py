@@ -1,5 +1,6 @@
 # start_debug
 from ethereum import *
+from contract_functions import *
 from copy import deepcopy
 
 class MERKLETRACKER(Contract):
