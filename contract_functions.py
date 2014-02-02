@@ -20,4 +20,4 @@ def getnonce(bh):
 def getblockhash(bh):
 	return sha256(sha256(bh))
 def nbitstotarget(nbits):
-	return nbits[0:3][::-1] * (2 ** (8*(nbits[3]-3)))
+	return nbits[0:3][::-1] * (2 ** (8*int(nbits[3]-3)))
