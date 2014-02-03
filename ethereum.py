@@ -170,6 +170,7 @@ def testResults(lRes):
 def loadASMFromFile(asmFile):
 	asm = []
 	locations = {}
+	variables = {}
 	with open(asmFile) as f:
 		for line in f:
 			l = line.strip()
@@ -177,6 +178,10 @@ def loadASMFromFile(asmFile):
 				continue
 			if l[0] == ':':
 				locations[l[1:]] = len(asm)
+				continue
+			if l[0] == ';':
+				s = l[1:].split(';')
+				variables[s[0]] = EBN(s[1])
 				continue
 			for op in l.split(' '):
 				if op == '':
@@ -186,7 +191,7 @@ def loadASMFromFile(asmFile):
 				except: 
 					pass
 				asm.append(op)
-	return asm, locations
+	return asm, locations, variables
 	
 	
 
@@ -313,10 +318,11 @@ class Contract:
 		pp.pprint(self.storage._storage)
 		
 class ContractASM(Contract):
-	def __init__(self, name, asm, locs):
+	def __init__(self, name, asm, locs={}, vars={}):
 		Contract.__init__(self,name)
 		self.asm = asm
 		self.locs = locs
+		self.vars = vars
 	def run(self, tx, block):
 		contract = self
 		memory = ContractStorage()
@@ -442,6 +448,8 @@ class ContractASM(Contract):
 					self.stack.append(EBN() + (len(asm)-1))
 				elif topush[:4] == 'loc:':
 					self.stack.append(EBN() + self.locs[topush[4:]])
+				elif topush[:4] == 'var:':
+					self.stack.append(self.vars[topush[4:]])
 				else:
 					self.stack.append(topush)
 				ind += 2
@@ -488,6 +496,9 @@ class ContractASM(Contract):
 				pass
 			elif op == 'FAIL':
 				raise Exception("FAIL called")
+			elif op == 'REVBYTES':
+				s = stack_pop(1)
+				self.stack.append(s[-1][::-1])
 			print self.stack
 			ind += 1
 	

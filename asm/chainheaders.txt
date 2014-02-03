@@ -1,9 +1,9 @@
 # memory map
 # mc-5 = 1b - state 1b
-# mc-4 = 28 - BIC 1c
-# mc-3 = 29 - TH 1d
-# mc-2 = 30 - TD 1e
-# mc-1 = 31 - TB 1f
+# mc-4 = 28 - BIC 1c block index count
+# mc-3 = 29 - TH 1d top height
+# mc-2 = 30 - TD 1e top cumulative diff
+# mc-1 = 31 - TB 1f top blockhash
 # data struct for blocks - +0:blockheader[:32]
 #						   +1:blockheader[32:64]
 #						   +2:blockheader[64:]
@@ -12,17 +12,45 @@
 #						   +5:cumulative diff
 #						   +6:num history
 #						   +7...:history items
+#
+# Memory offset: 0
+#	00: blockheader.1
+#	01: blockheader.2
+#	02: blockheader.3
+#	03: blockhash
+#	04: nbits
+#	05: target
+# VARIABLES
+;STATE;1b
+;BIC;1c
+;TH;1d
+;TD;1e
+;TB;1f
+;MC;20
+;BHDR.1;00
+;BHDR.2;01
+;BHDR.3;02
+;INDEX;03
+;HEIGHT;04
+;CUMDIFF;05
+;NUMHIST;06
+;HISTSTART;07
+
+;BH;03
+;NBITS;04
+;TARGET;05
+
 # check txvalue high enough
 PUSH loc:end PUSH 01ff BASEFEE MUL TXVALUE GT JMPI
 
 # check state, go to loaddata if done
-PUSH loc:loaddata PUSH 1b SLOAD PUSH 01 EQ JMPI
+PUSH loc:loaddata PUSH var:STATE SLOAD PUSH 01 EQ JMPI
 
 :init
 # save genesis block - hardcode values to avoid needing to hash them
-PUSH 6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000 DUP PUSH 03 MSTORE
+PUSH 6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000 DUP PUSH var:BH MSTORE
 	# add to start of index
-	PUSH 20 SSTORE
+	PUSH var:MC SSTORE
 PUSH 0100000000000000000000000000000000000000000000000000000000000000
 PUSH 000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa
 PUSH 4b1e5e4a29ab5f49ffff001d1dac2b7c
@@ -39,40 +67,61 @@ PUSH 6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000003 SSTORE
 PUSH 6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000002 SSTORE 
 PUSH 6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000001 SSTORE 
 PUSH 6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000 SSTORE 
-PUSH 01 PUSH 1c SSTORE
-PUSH 00 PUSH 1d SSTORE
-PUSH 010000 PUSH 1e SSTORE
-PUSH 6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000 PUSH 1f SSTORE
+PUSH 01 PUSH var:BIC SSTORE
+PUSH 00 PUSH var:TH SSTORE
+PUSH 010000 PUSH var:TD SSTORE
+PUSH 6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000 PUSH var:TB SSTORE
 
 # record state = 1
-PUSH 01 PUSH 1b SSTORE
+PUSH 01 PUSH var:STATE SSTORE
 
 # load tx data into chunks and store in memory slots 0,1,2
 :loaddata
 PUSH 00 TXDATA PUSH 01 TXDATA PUSH 02 TXDATA 
-PUSH 02 MSTORE PUSH 01 MSTORE PUSH 00 MSTORE
+PUSH var:BHDR.3 MSTORE PUSH var:BHDR.2 MSTORE PUSH var:BHDR.1 MSTORE
 
 :hashheader
-PUSH 00 PUSH 50 SHA256 PUSH 03 MSTORE
-PUSH 03 PUSH 20 SHA256 DUP PUSH 03 MSTORE
+PUSH var:BHDR.1 PUSH 50 SHA256 PUSH var:BH MSTORE
+PUSH var:BH PUSH 20 SHA256 DUP PUSH var:BH MSTORE
 
 :extractparent
-PUSH loc:verparent PUSH 01 MLOAD PUSH 00 MLOAD PUSH 04 PUSH loc:combinecut JMP
+PUSH loc:verparent PUSH var:BHDR.2 MLOAD PUSH var:BHDR.1 MLOAD PUSH 04 PUSH loc:combinecut JMP
 # verify parent is nonzero (ie exists)
 :verparent
 DUP SLOAD PUSH 00 EQ PUSH loc:end SWAP JMPI
 
+# push parent hash to back
+SWAP
 :extractnbits
-PUSH loc:verdiff1 PUSH 04 PUSH 02 MLOAD PUSH 18 PUSH loc:doublecut JMP
+PUSH loc:verdiff1 PUSH 04 PUSH var:BHDR.3 MLOAD PUSH 18 PUSH loc:doublecut JMP
 :verdiff1
-DUP PUSH loc:verdiff2 SWAP PUSH 00 SWAP PUSH 1f PUSH loc:doublecut JMP
+#  - stack: nbits
+DUP DUP PUSH var:HEIGHT MSTORE PUSH loc:verdiff2 SWAP PUSH 00 SWAP PUSH 1f PUSH loc:doublecut JMP
 :verdiff2
 SWAP PUSH loc:verdiff3 SWAP PUSH 01 SWAP PUSH 1c PUSH loc:doublecut JMP
 :verdiff3
+# swap diff endian
+DUP PUSH 0100 MOD SWAP PUSH 0100 DIV DUP PUSH 0100 MOD SWAP PUSH 0100 DIV
+SWAP PUSH 0100 MUL ADD SWAP PUSH 010000 MUL ADD
+# calc diff
+SWAP PUSH 03 SUB PUSH 08 MUL PUSH 02 SWAP EXP MUL
+# stack - target
+DUP PUSH var:TARGET MSTORE
+# compare, fail if target less than hash
+SWAP REVBYTES LT PUSH loc:end SWAP JMPI
+
+
+# VERIFIED FROM HEREOUT
+# VERIFIED FROM HEREOUT
+# VERIFIED FROM HEREOUT
+
+
+# calc diff increase
+PUSH ffff0000000000000000000000000000000000000000000000000000 PUSH 010000 MUL PUSH var:TARGET MLOAD DIV
 
 
 
-FAIL
+STOP
 
 # FUNCTIONS - all functions will JMP to a specified location when they finish.
 # This means the deepest argument 'passed' to the function should be the finish
@@ -80,19 +129,23 @@ FAIL
 
 :combinecut
 # input: returnloc, part2, part1, bytes
+# take all but the first #bytes in part 1 and the first #bytes from part 2 and concat
 # memory allocation: 01000000
 #	01: bytes
-DUP PUSH 01000001 MSTORE PUSH 0100 SWAP EXP MUL
-# rl, part2, part1*01000000
-SWAP PUSH 20 PUSH 01000001 MLOAD SUB PUSH 0100 SWAP EXP DIV ADD
+;CCBytes;01000001
+DUP PUSH var:CCBytes MSTORE PUSH 0100 SWAP EXP MUL
+SWAP PUSH 20 PUSH var:CCBytes MLOAD SUB PUSH 0100 SWAP EXP DIV ADD
 SWAP JMP
 
 :doublecut
 # input: returnloc, bytesback, part, bytesfront
 # mem alloc: 02000000
-PUSH 0100 SWAP EXP DUP PUSH 02000001 MSTORE MUL PUSH 02000001 MLOAD DIV
+#	01: bytes to cut from front
+;DCBytes;02000001
+PUSH 0100 SWAP EXP DUP PUSH var:DCBytes MSTORE MUL PUSH var:DCBytes MLOAD DIV
 SWAP
 PUSH 0100 SWAP EXP DIV SWAP JMP
+
 
 
 # SCRATCH PAD
