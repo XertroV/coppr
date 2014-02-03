@@ -1,9 +1,9 @@
 # memory map
-# mc-5 = 27 - state
-# mc-4 = 28 - BIC
-# mc-3 = 29 - TH
-# mc-2 = 30 - TD
-# mc-1 = 31 - TB
+# mc-5 = 1b - state 1b
+# mc-4 = 28 - BIC 1c
+# mc-3 = 29 - TH 1d
+# mc-2 = 30 - TD 1e
+# mc-1 = 31 - TB 1f
 # data struct for blocks - +0:blockheader[:32]
 #						   +1:blockheader[32:64]
 #						   +2:blockheader[64:]
@@ -16,13 +16,13 @@
 PUSH loc:end PUSH 01ff BASEFEE MUL TXVALUE GT JMPI
 
 # check state, go to loaddata if done
-PUSH loc:loaddata PUSH 27 SLOAD PUSH 01 EQ JMPI
+PUSH loc:loaddata PUSH 1b SLOAD PUSH 01 EQ JMPI
 
 :init
 # save genesis block - hardcode values to avoid needing to hash them
 PUSH 6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000 DUP PUSH 03 MSTORE
 	# add to start of index
-	PUSH 32 SSTORE
+	PUSH 20 SSTORE
 PUSH 0100000000000000000000000000000000000000000000000000000000000000
 PUSH 000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa
 PUSH 4b1e5e4a29ab5f49ffff001d1dac2b7c
@@ -39,27 +39,60 @@ PUSH 6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000003 SSTORE
 PUSH 6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000002 SSTORE 
 PUSH 6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000001 SSTORE 
 PUSH 6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000 SSTORE 
-PUSH 01 PUSH 28 SSTORE
-PUSH 00 PUSH 29 SSTORE
-PUSH 010000 PUSH 30 SSTORE
-PUSH 6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000 PUSH 31 SSTORE
+PUSH 01 PUSH 1c SSTORE
+PUSH 00 PUSH 1d SSTORE
+PUSH 010000 PUSH 1e SSTORE
+PUSH 6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000 PUSH 1f SSTORE
 
 # record state = 1
-PUSH 01 PUSH 27 SSTORE
+PUSH 01 PUSH 1b SSTORE
 
 # load tx data into chunks and store in memory slots 0,1,2
 :loaddata
 PUSH 00 TXDATA PUSH 01 TXDATA PUSH 02 TXDATA 
 PUSH 02 MSTORE PUSH 01 MSTORE PUSH 00 MSTORE
 
-:store
+:hashheader
+PUSH 00 PUSH 50 SHA256 PUSH 03 MSTORE
+PUSH 03 PUSH 20 SHA256 DUP PUSH 03 MSTORE
 
-PUSH 00 PUSH 80 SHA256 PUSH 03 MSTORE
-PUSH 03 PUSH 32 SHA256 DUP PUSH 03 MSTORE
+:extractparent
+PUSH loc:verparent PUSH 01 MLOAD PUSH 00 MLOAD PUSH 04 PUSH loc:combinecut JMP
+# verify parent is nonzero (ie exists)
+:verparent
+DUP SLOAD PUSH 00 EQ PUSH loc:end SWAP JMPI
+
+:extractnbits
+PUSH loc:verdiff1 PUSH 04 PUSH 02 MLOAD PUSH 18 PUSH loc:doublecut JMP
+:verdiff1
+DUP PUSH loc:verdiff2 SWAP PUSH 00 SWAP PUSH 1f PUSH loc:doublecut JMP
+:verdiff2
+SWAP PUSH loc:verdiff3 SWAP PUSH 01 SWAP PUSH 1c PUSH loc:doublecut JMP
+:verdiff3
+
 
 
 FAIL
 
+# FUNCTIONS - all functions will JMP to a specified location when they finish.
+# This means the deepest argument 'passed' to the function should be the finish
+# location.
+
+:combinecut
+# input: returnloc, part2, part1, bytes
+# memory allocation: 01000000
+#	01: bytes
+DUP PUSH 01000001 MSTORE PUSH 0100 SWAP EXP MUL
+# rl, part2, part1*01000000
+SWAP PUSH 20 PUSH 01000001 MLOAD SUB PUSH 0100 SWAP EXP DIV ADD
+SWAP JMP
+
+:doublecut
+# input: returnloc, bytesback, part, bytesfront
+# mem alloc: 02000000
+PUSH 0100 SWAP EXP DUP PUSH 02000001 MSTORE MUL PUSH 02000001 MLOAD DIV
+SWAP
+PUSH 0100 SWAP EXP DIV SWAP JMP
 
 
 # SCRATCH PAD

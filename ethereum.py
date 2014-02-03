@@ -41,7 +41,7 @@ class EBN:
 	Adds and compares like a number
 	Hashes like a byte array
 	'''
-	def __init__(self, initString, fromHex=True):
+	def __init__(self, initString='00', fromHex=True):
 		if fromHex == True:
 			'''input should be a string in hex encoding'''
 			self.this = initString.decode('hex') # byte array
@@ -74,15 +74,13 @@ class EBN:
 		
 	# do I need to do the r___ corresponding functions? (__radd__ for example)
 	def __add__(self, other):
-		a = i2h(int(self) + int(other))
-		print a
-		return EBN(a)
+		return EBN(i2h(int(self) + int(other) % 2**256))
 	def __sub__(self, other):
-		return EBN(i2h(int(self) - int(other)))
+		return EBN(i2h(int(self) - int(other) % 2**256))
 	def __mul__(self, other):
-		return EBN(i2h(int(self) * int(other)))
+		return EBN(i2h(int(self) * int(other) % 2**256))
 	def __div__(self, other):
-		return EBN(i2h(int(self) / int(other)))
+		return EBN(i2h(int(self) / int(other) % 2**256))
 	def __mod__(self, other):
 		return EBN(i2h(int(self) % int(other)))
 	def __pow__(self, other):
@@ -96,6 +94,8 @@ class EBN:
 		return self.hex()
 	def __int__(self):
 		return int(self.this.encode('hex'),16)
+	def __float__(self):
+		return float(self.__int__())
 		
 	def __hash__(self):
 		return int(self.hex(), 16)
@@ -185,7 +185,6 @@ def loadASMFromFile(asmFile):
 					op = EBN(op)
 				except: 
 					pass
-				print op
 				asm.append(op)
 	return asm, locations
 	
@@ -333,10 +332,10 @@ class ContractASM(Contract):
 			self.stack = self.stack[:-n]
 			return o
 		
-		ind = 0
+		ind = EBN("00")
 		while 1:
-			op = asm[ind]
-			print ind, op
+			op = asm[int(ind)]
+			print ind.hex(), op
 			if op == 'STOP': break
 			elif op == 'ADD':
 				s = stack_pop(2)
@@ -349,7 +348,7 @@ class ContractASM(Contract):
 				self.stack.append(s[-2]*s[-1])
 			elif op == 'DIV':
 				s = stack_pop(2)
-				self.stack.append(int(s[-2]/s[-1]))
+				self.stack.append(s[-2]/s[-1])
 			elif op == 'SDIV':
 				s = stack_pop(2)
 				sign = (1 if s[-1] < 2**255 else -1) * (1 if s[-2] < 2**255 else -1)
@@ -369,9 +368,9 @@ class ContractASM(Contract):
 				self.stack.append(z if sign == 1 else 2**256 - z)
 			elif op == 'EXP':
 				x,y = stack_pop(2)
-				self.stack.append(pow(x,y,2**256))
+				self.stack.append(pow(x,y))
 			elif op == 'NEG':
-				self.stack.append(2**256 - self.stack.pop(1)[0])
+				self.stack.append(2**256 - stack_pop(1)[0])
 			elif op == 'LT':
 				x,y = stack_pop(2)
 				self.stack.append(1 if x < y else 0)
@@ -388,7 +387,10 @@ class ContractASM(Contract):
 				x,y = stack_pop(2)
 				self.stack.append(1 if x == y else 0)
 			elif op == 'NOT':
-				self.stack.append(1 if self.stack.pop(1)[0] == 0 else 0)
+				x = stack_pop(1)
+				print x
+				res = int(x[0] == 0)
+				self.stack.append(res)
 			elif op == 'MYADDRESS':
 				self.stack.append(contract.address)
 			elif op == 'TXSENDER':
@@ -399,7 +401,7 @@ class ContractASM(Contract):
 				self.stack.append(tx.datan)
 			elif op == 'TXDATA':
 				s = stack_pop(1)
-				self.stack.append(tx.data[s[-1]])
+				self.stack.append(tx.data[int(s[-1])])
 			elif op == 'BLK_PREVHASH':
 				pass
 			elif op == 'BLK_COINBASE':
@@ -414,14 +416,12 @@ class ContractASM(Contract):
 				self.stack.append(block.basefee)
 			elif op == 'SHA256':
 				s = stack_pop(2)
-				itemstotake = int(math.ceil(s[-1] / 32.0))
+				itemstotake = math.ceil(float(s[-1]) / 32.0)
 				items = memory.slice(s[-2],s[-2]+itemstotake)
-				print items
 				tohash = EBN('')
 				for item in items:
 					tohash = tohash.concat(item)
 				self.stack.append(sha256(tohash))
-				print self.stack[-1].hex()
 			elif op == 'RIPEMD160':
 				pass
 			elif op == 'ECMUL':
@@ -437,11 +437,11 @@ class ContractASM(Contract):
 			elif op == 'SHA3':
 				pass
 			elif op == 'PUSH':
-				topush = asm[ind+1]
+				topush = asm[int(ind+1)]
 				if topush == 'loc:end':
-					self.stack.append(len(asm)-1)
+					self.stack.append(EBN() + (len(asm)-1))
 				elif topush[:4] == 'loc:':
-					self.stack.append(self.locs[topush[4:]])
+					self.stack.append(EBN() + self.locs[topush[4:]])
 				else:
 					self.stack.append(topush)
 				ind += 2
