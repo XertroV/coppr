@@ -1,91 +1,110 @@
 #!/usr/bin/python
 
-from ethereum import EBN, Block
+from ethereum import EBN, Block, Transaction, loadASMFromString, i2h, ContractStorage
+import sys
 
-def runASM(self, asm, stack, stopat=EBN("ffffffff"), block=Block(1,2**32,0x0,0,0), tx=Transaction('CHAINHEADERS',10**14,10**8,[],'alice')):
+
+def pop(stack, n): 
+	if len(stack) < n:
+		sys.stderr.write("Stack height insufficient, exiting")
+		exit = True
+		return [0] * n
+	o = [stack.pop() for i in range(n)][::-1]
+	return o
+
+
+def runASM(asm, stack, block=Block(1,2**32,0x0,0,0), tx=Transaction('CHAINHEADERS',10**14,10**8,[],'alice')):
+	opcount = 0
+	asm2 = {}
+	for n,ops in asm.iteritems():
+		asm2[n] = loadASMFromString(ops)
+	asm = asm2
 	cstorage = ContractStorage()
-	self.stack = []
-	asm = self.asm
-	# much of the following is borrowed from pyethereum/processblock.py
-	def stack_pop(n):
-		if len(self.stack) < n:
-			sys.stderr.write("Stack height insufficient, exiting")
-			exit = True
-			return [0] * n
-		o = self.stack[-n:]
-		self.stack = self.stack[:-n]
-		return o
+	cstack = [['START',0]]
 	
-	ind = EBN("00")
+	# much of the following is borrowed from pyethereum/processblock.py
+	
 	while 1:
-		op = asm[int(ind)]
-		if ind > stopat:
+		if len(cstack) == 0:
+			sys.stderr.write("Execution Finished\n")
 			break
+		print stack, cstack
+		cblk = cstack[-1][0]
+		ind = cstack[-1][1]
+		try:
+			op = asm[cblk][ind]
+			opcount += 1
+		except IndexError:
+			op = 'NULL'
+		print cblk, ind, op
 		if op == 'STOP': break
+		if op == 'NULL':
+			cstack.pop()
+			continue
 		elif op == 'ADD':
-			s = stack_pop(2)
-			self.stack.append(s[-2]+s[-1])
+			s = pop(stack, 2)
+			stack.append(s[-2]+s[-1])
 		elif op == 'SUB':
-			s = stack_pop(2)
-			self.stack.append(s[-2]-s[-1])
+			s = pop(stack, 2)
+			stack.append(s[-2]-s[-1])
 		elif op == 'MUL':
-			s = stack_pop(2)
-			self.stack.append(s[-2]*s[-1])
+			s = pop(stack, 2)
+			stack.append(s[-2]*s[-1])
 		elif op == 'DIV':
-			s = stack_pop(2)
-			self.stack.append(s[-2]/s[-1])
+			s = pop(stack, 2)
+			stack.append(s[-2]/s[-1])
 		elif op == 'SDIV':
-			s = stack_pop(2)
+			s = pop(stack, 2)
 			sign = (1 if s[-1] < 2**255 else -1) * (1 if s[-2] < 2**255 else -1)
 			x = s[-2] if s[-2] < 2*255 else 2*256 - s[-2]
 			y = s[-1] if s[-1] < 2*255 else 2*256 - s[-1]
 			z = int(x/y)
-			self.stack.append(z if sign == 1 else 2**256 - z)
+			stack.append(z if sign == 1 else 2**256 - z)
 		elif op == 'MOD':
-			s = stack_pop(2)
-			self.stack.append(s[-2]%s[-1])
+			s = pop(stack, 2)
+			stack.append(s[-2]%s[-1])
 		elif op == 'SMOD':
-			x,y = stack_pop(2)
+			x,y = pop(stack, 2)
 			sign = (1 if x < 2**255 else -1) * (1 if y < 2**255 else -1)
 			xx = x if x < 2**255 else 2**256 - x
 			yy = y if y < 2**255 else 2**256 - y
 			z = xx%yy
-			self.stack.append(z if sign == 1 else 2**256 - z)
+			stack.append(z if sign == 1 else 2**256 - z)
 		elif op == 'EXP':
-			x,y = stack_pop(2)
-			self.stack.append(pow(x,y))
+			x,y = pop(stack, 2)
+			stack.append(pow(x,y))
 		elif op == 'NEG':
-			self.stack.append(2**256 - stack_pop(1)[0])
+			stack.append(2**256 - pop(stack, 1)[0])
 		elif op == 'LT':
-			x,y = stack_pop(2)
-			self.stack.append(1 if x < y else 0)
+			x,y = pop(stack, 2)
+			stack.append(1 if x < y else 0)
 		elif op == 'LE':
-			x,y = stack_pop(2)
-			self.stack.append(1 if x <= y else 0)
+			x,y = pop(stack, 2)
+			stack.append(1 if x <= y else 0)
 		elif op == 'GT':
-			x,y = stack_pop(2)
-			self.stack.append(1 if x > y else 0)
+			x,y = pop(stack, 2)
+			stack.append(1 if x > y else 0)
 		elif op == 'GE':
-			x,y = stack_pop(2)
-			self.stack.append(1 if x >= y else 0)
+			x,y = pop(stack, 2)
+			stack.append(1 if x >= y else 0)
 		elif op == 'EQ':
-			x,y = stack_pop(2)
-			self.stack.append(1 if x == y else 0)
+			x,y = pop(stack, 2)
+			stack.append(1 if x == y else 0)
 		elif op == 'NOT':
-			x = stack_pop(1)
+			x = pop(stack, 1)
 			res = int(x[0] == 0)
-			self.stack.append(res)
+			stack.append(res)
 		elif op == 'MYADDRESS':
-			self.stack.append(contract.address)
+			stack.append(EBN('12345678901234567890'))
 		elif op == 'TXSENDER':
-			self.stack.append(tx.sender)
+			stack.append(tx.sender)
 		elif op == 'TXVALUE':
-			self.stack.append(tx.value)
+			stack.append(tx.value)
 		elif op == 'TXDATAN':
-			self.stack.append(tx.datan)
+			stack.append(tx.datan)
 		elif op == 'TXDATA':
-			s = stack_pop(1)
-			self.stack.append(tx.data[int(s[-1])])
+			s = pop(stack, 1)
+			stack.append(tx.data[int(s[-1])])
 		elif op == 'BLK_PREVHASH':
 			pass
 		elif op == 'BLK_COINBASE':
@@ -97,60 +116,51 @@ def runASM(self, asm, stack, stopat=EBN("ffffffff"), block=Block(1,2**32,0x0,0,0
 		elif op == 'BLK_DIFFICULTY':
 			pass
 		elif op == 'BASEFEE':
-			self.stack.append(block.basefee)
+			stack.append(block.basefee)
 		elif op == 'SHA256':
-			s = stack_pop(2)
+			s = pop(stack, 2)
 			itemstotake = math.ceil(float(s[-1]) / 32.0)
 			items = memory.slice(s[-2],s[-2]+itemstotake)
 			tohash = EBN('')
 			for item in items:
 				tohash = tohash.concat(item)
-			self.stack.append(sha256(tohash))
+			stack.append(sha256(tohash))
 		elif op == 'PUSH':
-			topush = asm[int(ind+1)]
+			topush = asm[cblk][ind+1]
 			if topush == 'loc:end':
-				self.stack.append(EBN() + (len(asm)-1))
+				stack.append(EBN() + (len(asm)-1))
 			elif topush[:4] == 'loc:':
-				self.stack.append(EBN() + self.locs[topush[4:]])
+				stack.append(EBN() + self.locs[topush[4:]])
 			elif topush[:4] == 'var:':
-				self.stack.append(self.vars[topush[4:]])
+				stack.append(self.vars[topush[4:]])
 			else:
-				self.stack.append(topush)
+				stack.append(topush)
 			ind += 1
 		elif op == 'POP':
-			pass
+			pop(stack, 1)
 		elif op == 'DUP':
-			s = stack_pop(1)
-			self.stack.extend([s[-1],s[-1]])
+			s = pop(stack, 1)
+			stack.extend([s[-1],s[-1]])
 		elif op == 'DUPN':
-			todup = int(asm[int(ind+1)])
+			todup = int(asm[cblk][ind+1])
 			stack.append(stack[-todup])
 			ind += 1
 		elif op == 'SWAP':
-			s = stack_pop(2)
-			self.stack.extend([s[-1],s[-2]])
+			s = pop(stack, 2)
+			stack.extend([s[-1],s[-2]])
 		elif op == 'SWAPN':
-			n, = stack_pop(1)
+			n = int(asm[cblk][ind+1])
 			s1 = stack[-1]
 			stack[-1] = stack[-n]
 			stack[-n] = s1
 		elif op == 'SLOAD':
-			s = stack_pop(1)
-			self.stack.append(cstorage[s[-1]])
+			s = pop(stack, 1)
+			stack.append(cstorage[s[-1]])
 		elif op == 'SSTORE':
-			s = stack_pop(2)
+			s = pop(stack, 2)
 			cstorage[s[-1]] = s[-2]
-		elif op == 'JMP':
-			s = stack_pop(1)
-			ind = s[-1]
-			continue
-		elif op == 'JMPI':
-			s = stack_pop(2)
-			if s[-1] != 0:
-				ind = s[-2]
-				continue
 		elif op == 'IND':
-			self.stack.append(ind)
+			stack.append(EBN(i2h(ind)))
 		elif op == 'EXTRO':
 			pass
 		elif op == 'BALANCE':
@@ -162,7 +172,28 @@ def runASM(self, asm, stack, stopat=EBN("ffffffff"), block=Block(1,2**32,0x0,0,0
 		elif op == 'FAIL':
 			raise Exception("FAIL called")
 		elif op == 'REVBYTES':
-			s = stack_pop(1)
-			self.stack.append(s[-1][::-1])
-		print self.stack
+			s = pop(stack, 1)
+			stack.append(s[-1][::-1])
+		elif op == 'RUN':
+			torun = asm[cblk][ind+1]
+			cstack[-1][1] += 2
+			cstack.append([torun,0])
+			continue
+		elif op == 'IF':
+			print stack
+			s = pop(stack, 1)
+			print stack
+			t = asm[cblk][ind+1]
+			f = asm[cblk][ind+2]
+			if s[-1] == EBN('00'):
+				tr = f
+			else:
+				tr = t
+			cstack[-1][1] += 3
+			cstack.append([tr,0])
+			continue
+			
 		ind += 1
+		cstack[-1][1] = ind
+	print stack, cstack
+	print opcount, 'operations'

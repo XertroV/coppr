@@ -76,6 +76,7 @@ class EBN:
 	def __add__(self, other):
 		return EBN(i2h(int(self) + int(other) % 2**256))
 	def __sub__(self, other):
+		print i2h(int(self) - int(other) % 2**256)
 		return EBN(i2h(int(self) - int(other) % 2**256))
 	def __mul__(self, other):
 		return EBN(i2h(int(self) * int(other) % 2**256))
@@ -127,6 +128,8 @@ def xor_strings(xs, ys):
 def i2h(i):
 	'''return int as shortest hex with an even number of digits as str'''
 	h = format(i,'x')
+	if h == '':
+		return '00'
 	return '0'*(len(h)%2)+h
 
 def testTransactions(ETH, lTx):
@@ -192,6 +195,19 @@ def loadASMFromFile(asmFile):
 					pass
 				asm.append(op)
 	return asm, locations, variables
+	
+def loadASMFromString(s):
+	asm = []
+	l = s.strip()
+	for op in l.split(' '):
+		if op == '':
+			continue
+		try: 
+			op = EBN(op)
+		except: 
+			pass
+		asm.append(op)
+	return asm
 	
 	
 
