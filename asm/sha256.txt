@@ -1,0 +1,21 @@
+# SHA256
+
+# reference: http://en.wikipedia.org/wiki/SHA-2#Pseudocode
+
++LENBITS
+counter = 0
+if num < 100:
+	PUSH 07 +LENBITS2
+else:
+	counter += 8
+	num = num / 100
+	
++LENBITS2
+DUP PUSH 00 EQ IF [PUSH 00] [
+SWAP DUP PUSH 03 SWAPN DUP PUSH 02 SWAP EXP
+SWAP PUSH 03 SWAPN 
+if num > s[-2]: LT IF []
+	return orig count
+else:
+	PUSH 01 SUB +LENBITS2
+]

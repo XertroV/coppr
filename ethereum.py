@@ -305,6 +305,7 @@ class Contract:
 		self.name = name
 		self.storage = ContractStorage()
 		self.address = name
+		self.stack = []
 		
 	def stop(self, message=''):
 		print colored('# Contract Stopped - %s' % message,'red')
@@ -323,7 +324,7 @@ class ContractASM(Contract):
 		self.asm = asm
 		self.locs = locs
 		self.vars = vars
-	def run(self, tx, block):
+	def run(self, tx, block, stopat=EBN("ffffffff")):
 		contract = self
 		memory = ContractStorage()
 		self.stack = []
@@ -341,7 +342,8 @@ class ContractASM(Contract):
 		ind = EBN("00")
 		while 1:
 			op = asm[int(ind)]
-			print ind.hex(), op
+			if ind > stopat:
+				break
 			if op == 'STOP': break
 			elif op == 'ADD':
 				s = stack_pop(2)
@@ -394,7 +396,6 @@ class ContractASM(Contract):
 				self.stack.append(1 if x == y else 0)
 			elif op == 'NOT':
 				x = stack_pop(1)
-				print x
 				res = int(x[0] == 0)
 				self.stack.append(res)
 			elif op == 'MYADDRESS':

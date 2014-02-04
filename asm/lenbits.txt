@@ -1,0 +1,8 @@
+DUP PUSH 00 EQ IF [PUSH 00] [
+SWAP DUP PUSH 03 SWAPN DUP PUSH 02 SWAP EXP
+SWAP PUSH 03 SWAPN 
+if num > s[-2]: LT IF []
+	return orig count
+else:
+	PUSH 01 SUB +LENBITS2
+]
